@@ -36,9 +36,9 @@ def sdbm_hash(instr):
 #
 # Functions to handle user input
 #
-bool hasRegistered = False
-bool hasJoined = False
-
+hasRegistered = False
+hasJoined = False
+username = ""
 sockfd = ""
 
 def getSocket():
@@ -47,32 +47,54 @@ def makeTCP():
 	sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
 		sockfd.connect( ("localhost", 32340) )
-	except 
-		socket.error as err: print("Connection error: ", err) sys.exit(1)
+	except socket.error as err:
+	 print("Connection error: ", err) 
+	 sys.exit(1)
 def do_User():
 	outstr = "\n[User] username: "+userentry.get()
 	CmdWin.insert(1.0, outstr)
 	userentry.delete(0, END)
 	ename = userentry.get()
 	if hasRegistered:
-		print ("Already Registered")
+		CmdWin.insert(1.0, "Already Registered")
 	else:
 		if hasJoined == False:
 			username = ename
 		else:
-			print("Already Joined the Chatroom, Cant Change name")
+			CmdWin.insert(1.0,"Already Joined the Chatroom, Cant Change name")
 
 
 def do_List():
 	CmdWin.insert(1.0, "\nPress List")
+	socket = getSocket()
+	s="L::\r\n"
+	err = socket.send(s.encode("ascii"))
+	if err == -1:
+		socket.makeTCP()
+		socket.send(s.encode("ascii"))
 
+	else:
+		plist = socket.recv(32)
+		l = plist.decode("ascii")
+		listarray = l.split(':')
+		if listarray[0] == "G":
+			x=listarray.pop(0)
+			if x[0] != '':
+				for a in x:
+					if a != '':
+						CmdWin.insert(1.0, "\n" + a)
+					else:
+						break
+			else:
+				CmdWin.insert(1.0, "EMPTY")
+		else:
+			print("error")
 
-sockfd = ""
 def do_Join():
 	CmdWin.insert(1.0, "\nPress JOIN")
 	if not hasRegistered:
 		do_User()
-	else if hasJoined:
+	elif hasJoined:
 		#error message
 		print("already joined")
 	else:
