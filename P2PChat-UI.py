@@ -1,4 +1,4 @@
-l.#!/usr/bin/python3
+#!/usr/bin/python3
 
 # Student name and No.:
 # Student name and No.:
@@ -47,6 +47,14 @@ def do_User():
 	outstr = "\n[User] username: "+userentry.get()
 	CmdWin.insert(1.0, outstr)
 	userentry.delete(0, END)
+	ename = userentry.get()
+	if hasRegistered:
+		print ("Already Registered")
+	else:
+		if hasJoined == False:
+			username = ename
+		else:
+			print("Already Joined the Chatroom, Cant Change name")
 
 
 def do_List():
