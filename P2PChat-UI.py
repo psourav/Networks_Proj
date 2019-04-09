@@ -39,10 +39,16 @@ def sdbm_hash(instr):
 bool hasRegistered = False
 bool hasJoined = False
 
-def getSocket():
-	return 
-def makeTCP():
+sockfd = ""
 
+def getSocket():
+	return sockfd
+def makeTCP():
+	sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+	try:
+		sockfd.connect( ("localhost", 32340) )
+	except 
+		socket.error as err: print("Connection error: ", err) sys.exit(1)
 def do_User():
 	outstr = "\n[User] username: "+userentry.get()
 	CmdWin.insert(1.0, outstr)
@@ -73,14 +79,12 @@ def do_Join():
 		roomname = userentry.get()
 		if roomname:
 			userIP, userPort = sockfd.getsockname()
-			err = sockfd.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
+			socket = getSocket()
+			err = socket.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
 			if err == -1:
-				sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-				try:
-					sockfd.connect( ("localhost", 32340) )
-					sockfd.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
-				except 
-					socket.error as err: print("Connection error: ", err) sys.exit(1)
+				socket = makeTCP()
+				socket.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
+				
 			#get message from server
 			s.recv(50)
 		else:
