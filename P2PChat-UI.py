@@ -50,16 +50,23 @@ def makeTCP():
 	except socket.error as err:
 	 print("Connection error: ", err) 
 	 sys.exit(1)
+
 def do_User():
-	outstr = "\n[User] username: "+userentry.get()
-	CmdWin.insert(1.0, outstr)
-	userentry.delete(0, END)
-	ename = userentry.get()
+	global username, hasRegistered, hasJoined
 	if hasRegistered:
-		CmdWin.insert(1.0, "Already Registered")
+		CmdWin.insert(1.0, "\nAlready Registered")
 	else:
 		if hasJoined == False:
-			username = ename
+			if userentry.get():
+				username = userentry.get()
+				outstr = "\n[User] username: "+userentry.get()
+				CmdWin.insert(1.0, outstr)
+				userentry.delete(0, END)
+				hasRegistered=True
+			else: 
+				CmdWin.insert(1.0,"Input User Name")
+
+
 		else:
 			CmdWin.insert(1.0,"Already Joined the Chatroom, Cant Change name")
 
