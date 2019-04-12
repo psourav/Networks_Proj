@@ -47,6 +47,8 @@ username = ""
 roomname = ""
 
 hasRegistered = False
+oHID = "" 
+msgID ="" 
 
 sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 sockfd.connect( ("localhost", 32340) )
@@ -70,23 +72,32 @@ def makeTCP(userIP, userPort):
 
 def do_User():
 	global hasRegistered, username
-	outstr = "\n[User] username: "+userentry.get()
-	username = userentry.get()
-	CmdWin.insert(1.0, outstr)
-	userentry.delete(0, END)
-	hasRegistered = True
-	print(hasRegistered)
+	
+	if hasRegistered.get():
+		CmdWin.insert(1.0, "\nAlready Registered")
+	else:
+		if hasJoined.get() == False:
+			if userentry.get():
+				username=userentry.get()
+				outstr = "\n[User] username: "+userentry.get()
+				CmdWin.insert(1.0, outstr)
+				userentry.delete(0, END)
+				hasRegistered=True
+			else: 
+				CmdWin.insert(1.0,"Input User Name")
+
+
+		else:
+			CmdWin.insert(1.0,"Already Joined the Chatroom, Cant Change name")
 
 
 def do_List():
-	global sockfd
-
-	CmdWin.insert(1.0, "\nPress List")
+	
 	sockfd = getSocket()
 	s = "L::\r\n"
 	try : sockfd.send(s.encode("ascii"))
 	except:
-		sockfd.makeTCP("localhost", 32340)
+		sockfd.makeTCP()
 		sockfd.send(s.encode("ascii"))
 
 	plist = sockfd.recv(32)
@@ -94,15 +105,17 @@ def do_List():
 	listarray = l.split(':')
 	if listarray[0] == "G":
 		print(listarray)
-		x=listarray.pop(0)
-		if x[0] != '':
-			for a in x:	
-				if a != '':
-					CmdWin.insert(1.0, "\n" + a)
-				else:
-					break
+		if listarray[1] != "":
+			for a in listarray:
+				if a != "G":
+					if a != "":
+						CmdWin.insert(1.0, "\n" + a)
+					else:
+						break 
 		else:
-			CmdWin.insert(1.0, "EMPTY")
+			CmdWin.insert(1.0, "\nEMPTY")
+	else:
+		CmdWin.insert(1.0, "ERROR")
 
 
 def establishForwardLink(hashVal, memberList , memberListHash):
@@ -211,8 +224,25 @@ def do_Join():
 
 
 def do_Send():
-	CmdWin.insert(1.0, "\nPress Send")
+	global roomname, oHID, username, msgID
+	msg = userentry.get()
+	if msg = "":
+		CmdWin.insert(1.0, "\nBlank Input")
+		return
+	prot = "T:%s:%d:%s:%d:%d:%s::\r\n" % (roomname,oHID , username, msgID, len(msg), msg )
 
+	if hasJoined==False:
+		CmdWin.insert(1.0, "\nNot Connected to any Chatroom")
+		return
+
+	socket = getSocket()
+
+	try:
+		socket.send(prot.encode("ascii"))
+		print("Send via Forward Link\n")
+
+	except socket.error as err:
+		print("Send, forward err ->", err)
 
 def do_Poke():
 	CmdWin.insert(1.0, "\nPress Poke")
