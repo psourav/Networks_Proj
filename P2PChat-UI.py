@@ -79,7 +79,6 @@ def do_User():
 
 
 def do_List():
-	CmdWin.insert(1.0, "\nPress List")
 	sockfd = getSocket()
 	s = "L::\r\n"
 	try : sockfd.send(s.encode("ascii"))
@@ -92,15 +91,15 @@ def do_List():
 	listarray = l.split(':')
 	if listarray[0] == "G":
 		print(listarray)
-		x=listarray.pop(0)
-		if x[0] != '':
-			for a in x:
-				if a != '':
-					CmdWin.insert(1.0, "\n" + a)
-				else:
-					break
+		if listarray[1] != "":
+			for a in listarray:
+				if a != "G":
+					if a != "":
+						CmdWin.insert(1.0, "\n" + a)
+					else:
+						break 
 		else:
-			CmdWin.insert(1.0, "EMPTY")
+			CmdWin.insert(1.0, "\nEMPTY")
 """
 
 def establishForwardLink(hashVal, memberList , memberListHash):
@@ -145,7 +144,6 @@ def JoinRoom():
 	return arr, hashVal
 
 def do_Join():
-	CmdWin.insert(1.0, "\nPress JOIN")
 	print(hasRegistered)
 	if not hasRegistered.get():
 		do_User()
@@ -251,9 +249,9 @@ bottscroll.config(command=CmdWin.yview)
 #KEEP ALIVE PROCEDURE
 def thd_func():
 	starttime=time.time()
-	while True:
-		if ((time.time() - starttime) % 20.0) == 0 and hasJoined.get():
-			JoinRoom()
+
+	if ((time.time() - starttime) % 20.0) == 0 and hasJoined.get():
+		JoinRoom()
 
 newthd = threading.Thread(target=thd_func, args=())
 newthd.start()
