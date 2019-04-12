@@ -39,16 +39,29 @@ def sdbm_hash(instr):
 #
 
 
+
+hasJoined = False
+
+username = ""
+
+roomname = ""
+
+hasRegistered = False
+
+sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sockfd.connect( ("localhost", 32340) )
+
+gList = {}
 def getSocket():
 	return sockfd
 
 def setSocket(sock):
 	sockfd = sock
 
-def makeTCP():
+def makeTCP(userIP, userPort):
 	sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
-		sockfd.connect( ("localhost", 32340) )
+		sockfd.connect( (userIP, userPort) )
 	except :
 		print("Connection error: ", err)
 		sys.exit(1)
@@ -56,21 +69,24 @@ def makeTCP():
 	return sockfd
 
 def do_User():
+	global hasRegistered, username
 	outstr = "\n[User] username: "+userentry.get()
-	username.set(userentry.get())
+	username = userentry.get()
 	CmdWin.insert(1.0, outstr)
 	userentry.delete(0, END)
-	hasRegistered.set(True)
+	hasRegistered = True
 	print(hasRegistered)
 
 
 def do_List():
+	global sockfd
+
 	CmdWin.insert(1.0, "\nPress List")
 	sockfd = getSocket()
 	s = "L::\r\n"
 	try : sockfd.send(s.encode("ascii"))
 	except:
-		sockfd.makeTCP()
+		sockfd.makeTCP("localhost", 32340)
 		sockfd.send(s.encode("ascii"))
 
 	plist = sockfd.recv(32)
@@ -80,7 +96,7 @@ def do_List():
 		print(listarray)
 		x=listarray.pop(0)
 		if x[0] != '':
-			for a in x:
+			for a in x:	
 				if a != '':
 					CmdWin.insert(1.0, "\n" + a)
 				else:
@@ -91,32 +107,70 @@ def do_List():
 
 def establishForwardLink(hashVal, memberList , memberListHash):
 	memberListHash = memberListHash.sort()
-	start = memberListHash.index() + 1
+	start = memberListHash.index(hashVal) + 1
 
-	#while memberListHash[start] != hashVal:
+	while gList[start]["hash"] != hashVal:
+		if  gList[start]["hash"] in gList[start-1]["backwardLink"]:
+			start = (start + 1) % len(memberListHash) #(i.e., wrap around if reaching the end)
+		else
+			establish a TCP connection to the member at gList[start] 
+			
+			sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+			IP = memberList[memberListHash[start]][1]
+			Port = memberList[memberListHash[start]][2]
+			
+			try: sockfd.connect( (IP, Port) )
+			except:
+				start = (start + 1) % len(memberListHash)
+				continue
+
+			userIP, userPort = sockfd.getsockname()
+
+			msg = "P:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort)
+
+			makeTCP(userIP, userPort)
+			if successful
+				declare successfully FORWARD LINKED 
+				add this connection to H’s socket list 
+				update gList to indicate this link
+				jump out of the while loop
+			else
+				start = (start + 1) % gList.size
+				goto step 5
+			
+				
+		if failure to establish a forward link
+			report error and schedule to retry the above logic later
 
 def getMemberList(arr):
+	global gList
 	print(arr)
 	i = 1
 	hash = arr[i]
 	memberListHash = []
 	memberList = {}
+	j = 0
 	while arr[i+1] != '':
 		hashedVal = sdbm_hash(arr[i+1] + arr[i+2] + arr[i+3])
 		memberListHash.append(hashedVal)
 		memberList[hashedVal] = (arr[i+1] , arr[i+2] , arr[i+3])
+		gList[j] = {"username": arr[i+1] , "userIP":arr[i+2] , "userPort":arr[i+3], "hash" : hashedVal ,"forwardLink" : [], "backwardLink" : []}
+		j+=1
 		i+=3
 	return memberList, memberListHash
 
 def JoinRoom():
+	global roomname, username, sockfd
 	sockfd = getSocket()
 	userIP, userPort = sockfd.getsockname()
-	msg = "J:%s:%s:%s:%s::\r\n" % (roomname.get(), username.get(), userIP, userPort)
-	hashVal = sdbm_hash(str(username.get()) + str(userIP) + str(userPort))
+	msg = "J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort)
+	print(msg)
+	hashVal = sdbm_hash(str(username) + str(userIP) + str(userPort))
 	try:
 		sockfd.send(msg.encode("ascii"))
 	except:
-		sockfd = makeTCP()
+		sockfd = makeTCP("localhost", 32340)
 		setSocket(sockfd)
 		sockfd.send(msg.encode("ascii"))
 		
@@ -131,15 +185,16 @@ def JoinRoom():
 	return arr, hashVal
 
 def do_Join():
+	global hasRegistered, hasJoined, roomname, sockfd
 	CmdWin.insert(1.0, "\nPress JOIN")
 	print(hasRegistered)
-	if not hasRegistered.get():
+	if not hasRegistered:
 		do_User()
-	elif hasJoined.get():
+	elif hasJoined:
 		#error message
 		print("already joined")
 	else:
-		roomname.set(userentry.get())
+		roomname = userentry.get()
 		arr,hashVal = JoinRoom()
 		memberList, memberListHash = getMemberList(arr)
 		print(memberListHash)
@@ -149,7 +204,7 @@ def do_Join():
 		else :
 			print("no need for connection")
 
-		hasJoined.set(True)
+		hasJoined = True
 
 
 
@@ -172,22 +227,6 @@ def do_Quit():
 # Set up of Basic UI
 #
 win = Tk()
-
-
-hasRegistered = BooleanVar()
-hasRegistered.set(False)
-
-hasJoined = BooleanVar()
-hasJoined.set(False)
-
-username = StringVar()
-username.set("")
-
-roomname = StringVar()
-roomname.set("")
-
-sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-sockfd.connect( ("localhost", 32340) )
 
 win.title("MyP2PChat")
 
@@ -238,7 +277,7 @@ bottscroll.config(command=CmdWin.yview)
 def thd_func():
 	starttime=time.time()
 	while True:
-		if ((time.time() - starttime) % 20.0) == 0 and hasJoined.get():
+		if ((time.time() - starttime) % 20.0) == 0 and hasJoined:
 			JoinRoom()
 
 newthd = threading.Thread(target=thd_func, args=())
