@@ -1,4 +1,4 @@
-l.#!/usr/bin/python3
+#!/usr/bin/python3
 
 # Student name and No.:
 # Student name and No.:
@@ -10,7 +10,8 @@ l.#!/usr/bin/python3
 from tkinter import *
 import sys
 import socket
-
+import time
+import threading
 #
 # Global variables
 #
@@ -36,51 +37,121 @@ def sdbm_hash(instr):
 #
 # Functions to handle user input
 #
-bool hasRegistered = False
-bool hasJoined = False
 
-sockfd = ""
 
 def getSocket():
 	return sockfd
+
+def setSocket(sock):
+	sockfd = sock
+
 def makeTCP():
 	sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 	try:
 		sockfd.connect( ("localhost", 32340) )
-	except 
-		socket.error as err: print("Connection error: ", err) sys.exit(1)
+	except :
+		print("Connection error: ", err)
+		sys.exit(1)
+
+	return sockfd
+
 def do_User():
 	outstr = "\n[User] username: "+userentry.get()
+	username.set(userentry.get())
 	CmdWin.insert(1.0, outstr)
 	userentry.delete(0, END)
+	hasRegistered.set(True)
+	print(hasRegistered)
 
 
 def do_List():
 	CmdWin.insert(1.0, "\nPress List")
+	sockfd = getSocket()
+	s = "L::\r\n"
+	try : sockfd.send(s.encode("ascii"))
+	except:
+		sockfd.makeTCP()
+		sockfd.send(s.encode("ascii"))
+
+	plist = sockfd.recv(32)
+	l = plist.decode("ascii")
+	listarray = l.split(':')
+	if listarray[0] == "G":
+		print(listarray)
+		x=listarray.pop(0)
+		if x[0] != '':
+			for a in x:
+				if a != '':
+					CmdWin.insert(1.0, "\n" + a)
+				else:
+					break
+		else:
+			CmdWin.insert(1.0, "EMPTY")
 
 
-sockfd = ""
+def establishForwardLink(hashVal, memberList , memberListHash):
+	memberListHash = memberListHash.sort()
+	start = memberListHash.index() + 1
+
+	#while memberListHash[start] != hashVal:
+
+def getMemberList(arr):
+	print(arr)
+	i = 1
+	hash = arr[i]
+	memberListHash = []
+	memberList = {}
+	while arr[i+1] != '':
+		hashedVal = sdbm_hash(arr[i+1] + arr[i+2] + arr[i+3])
+		memberListHash.append(hashedVal)
+		memberList[hashedVal] = (arr[i+1] , arr[i+2] , arr[i+3])
+		i+=3
+	return memberList, memberListHash
+
+def JoinRoom():
+	sockfd = getSocket()
+	userIP, userPort = sockfd.getsockname()
+	msg = "J:%s:%s:%s:%s::\r\n" % (roomname.get(), username.get(), userIP, userPort)
+	hashVal = sdbm_hash(str(username.get()) + str(userIP) + str(userPort))
+	try:
+		sockfd.send(msg.encode("ascii"))
+	except:
+		sockfd = makeTCP()
+		setSocket(sockfd)
+		sockfd.send(msg.encode("ascii"))
+		
+	#get message from server
+	packet = ""
+	arr = packet.split(':')
+	
+	while arr[-1] != '\r\n':
+		packet += sockfd.recv(2).decode("ascii")
+		arr = packet.split(':')
+
+	return arr, hashVal
+
 def do_Join():
 	CmdWin.insert(1.0, "\nPress JOIN")
-	if not hasRegistered:
+	print(hasRegistered)
+	if not hasRegistered.get():
 		do_User()
-	else if hasJoined:
+	elif hasJoined.get():
 		#error message
 		print("already joined")
 	else:
-		roomname = userentry.get()
-		if roomname:
-			userIP, userPort = sockfd.getsockname()
-			socket = getSocket()
-			err = socket.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
-			if err == -1:
-				socket = makeTCP()
-				socket.send("J:%s:%s:%s:%s::\r\n" % (roomname, username, userIP, userPort))
-				
-			#get message from server
-			s.recv(50)
-		else:
-			print("Enter chatroom name")
+		roomname.set(userentry.get())
+		arr,hashVal = JoinRoom()
+		memberList, memberListHash = getMemberList(arr)
+		print(memberListHash)
+		if len(memberListHash) > 1 :
+			print("connect to someone")
+			establishForwardLink(hashVal, memberList , memberListHash)
+		else :
+			print("no need for connection")
+
+		hasJoined.set(True)
+
+
 
 
 
@@ -101,6 +172,23 @@ def do_Quit():
 # Set up of Basic UI
 #
 win = Tk()
+
+
+hasRegistered = BooleanVar()
+hasRegistered.set(False)
+
+hasJoined = BooleanVar()
+hasJoined.set(False)
+
+username = StringVar()
+username.set("")
+
+roomname = StringVar()
+roomname.set("")
+
+sockfd = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+sockfd.connect( ("localhost", 32340) )
+
 win.title("MyP2PChat")
 
 #Top Frame for Message display
@@ -144,6 +232,19 @@ CmdWin.pack(side=LEFT, fill=BOTH, expand=True)
 bottscroll.pack(side=RIGHT, fill=Y, expand=True)
 CmdWin.config(yscrollcommand=bottscroll.set)
 bottscroll.config(command=CmdWin.yview)
+
+
+#KEEP ALIVE PROCEDURE
+def thd_func():
+	starttime=time.time()
+	while True:
+		if ((time.time() - starttime) % 20.0) == 0 and hasJoined.get():
+			JoinRoom()
+
+newthd = threading.Thread(target=thd_func, args=())
+newthd.start()
+
+
 
 def main():
 	if len(sys.argv) != 4:
